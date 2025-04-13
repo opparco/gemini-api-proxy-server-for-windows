@@ -1,4 +1,4 @@
-# Gemini API Proxy Server (C# Windows版)
+# Gemini API Proxy Server
 
 Gemini APIへのリクエストとレスポンスをロギングおよび画像生成をモック化するプロキシアプリケーション
 
