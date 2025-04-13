@@ -228,11 +228,11 @@ namespace GeminiApiProxy
                 proxyServer.Start();
 
                 Console.WriteLine($"Proxy server running on 127.0.0.1:{settings.ProxyPort}");
-                Console.WriteLine("Press 'n' to create a new log directory");
-                Console.WriteLine("Press 'm' to toggle between Production and Mock modes");
-                Console.WriteLine("Press 'r' to reload templates");
                 Console.WriteLine("Press 'p' to enable Windows proxy settings");
                 Console.WriteLine("Press 'u' to disable Windows proxy settings");
+                Console.WriteLine("Press 'm' to toggle between Production and Mock modes");
+                Console.WriteLine("Press 'n' to create a new log directory");
+                Console.WriteLine("Press 'r' to reload templates");
                 Console.WriteLine("Press 'q' to exit");
 
                 // Command handling loop
@@ -242,21 +242,21 @@ namespace GeminiApiProxy
 
                     switch (key.KeyChar)
                     {
-                        case 'n':
-                            CreateNewLogDirectory();
-                            break;
-                        case 'm':
-                            ToggleMode();
-                            break;
-                        case 'r':
-                            LoadMockTemplates();
-                            Console.WriteLine("Templates reloaded");
-                            break;
                         case 'p':
                             SetWindowsProxy(true);
                             break;
                         case 'u':
                             SetWindowsProxy(false);
+                            break;
+                        case 'm':
+                            ToggleMode();
+                            break;
+                        case 'n':
+                            CreateNewLogDirectory();
+                            break;
+                        case 'r':
+                            LoadMockTemplates();
+                            Console.WriteLine("Templates reloaded");
                             break;
                         case 'q':
                             SetWindowsProxy(false);
