@@ -152,6 +152,31 @@ namespace GeminiApiProxy
                 proxyServer.BeforeRequest += OnRequest;
                 proxyServer.BeforeResponse += OnResponse;
 
+                var (proxyEnabled, proxyServerAuthority) = GetWindowsProxySettings();
+                Console.WriteLine("\nCurrent Windows Proxy Settings:");
+                Console.WriteLine($"Status: {(proxyEnabled ? "Enabled" : "Disabled")}");
+                if (proxyEnabled)
+                {
+                    Console.WriteLine($"Proxy Server: {proxyServerAuthority}");
+
+                    bool isOwnProxy = proxyServerAuthority.Contains($"127.0.0.1:{settings.ProxyPort}");
+                    if (isOwnProxy)
+                    {
+                        Console.WriteLine("This proxy is already set as the system proxy.");
+                    }
+                    else
+                    {
+                        Console.WriteLine("Warning: Another proxy is currently active.");
+                        Console.WriteLine($"To use this proxy, press 'p' after startup to set 127.0.0.1:{settings.ProxyPort}");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("No proxy server is currently active.");
+                    Console.WriteLine($"Press 'p' after startup to enable this proxy (127.0.0.1:{settings.ProxyPort})");
+                }
+                Console.WriteLine();
+
                 isInitialized = true;
                 Console.WriteLine("Initialization completed successfully");
             }
@@ -203,9 +228,11 @@ namespace GeminiApiProxy
                 proxyServer.Start();
 
                 Console.WriteLine($"Proxy server running on 127.0.0.1:{settings.ProxyPort}");
-                Console.WriteLine("Press 'm' to toggle between Production and Mock modes");
                 Console.WriteLine("Press 'n' to create a new log directory");
+                Console.WriteLine("Press 'm' to toggle between Production and Mock modes");
                 Console.WriteLine("Press 'r' to reload templates");
+                Console.WriteLine("Press 'p' to enable Windows proxy settings");
+                Console.WriteLine("Press 'u' to disable Windows proxy settings");
                 Console.WriteLine("Press 'q' to exit");
 
                 // Command handling loop
@@ -215,17 +242,24 @@ namespace GeminiApiProxy
 
                     switch (key.KeyChar)
                     {
-                        case 'm':
-                            ToggleMode();
-                            break;
                         case 'n':
                             CreateNewLogDirectory();
+                            break;
+                        case 'm':
+                            ToggleMode();
                             break;
                         case 'r':
                             LoadMockTemplates();
                             Console.WriteLine("Templates reloaded");
                             break;
+                        case 'p':
+                            SetWindowsProxy(true);
+                            break;
+                        case 'u':
+                            SetWindowsProxy(false);
+                            break;
                         case 'q':
+                            SetWindowsProxy(false);
                             await ShutdownProxy();
                             return;
                     }
@@ -667,6 +701,111 @@ namespace GeminiApiProxy
                 500 => "Internal Server Error",
                 _ => "Unknown"
             };
+        }
+
+        static (bool proxyEnabled, string proxyServerAuthority) GetWindowsProxySettings()
+        {
+            try
+            {
+                using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
+                    @"Software\Microsoft\Windows\CurrentVersion\Internet Settings", false);
+
+                if (key == null)
+                {
+                    Console.WriteLine("Cannot open registry key for proxy settings");
+                    return (false, string.Empty);
+                }
+
+                var enableValue = key.GetValue("ProxyEnable");
+                bool proxyEnabled = enableValue != null && Convert.ToInt32(enableValue) == 1;
+
+                string proxyServerAuthority = key.GetValue("ProxyServer") as string ?? string.Empty;
+
+                return (proxyEnabled, proxyServerAuthority);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error reading Windows proxy settings: {ex.Message}");
+                return (false, string.Empty);
+            }
+        }
+
+        static bool SetWindowsProxy(bool enable)
+        {
+            try
+            {
+                var (proxyEnabled, proxyServerAuthority) = GetWindowsProxySettings();
+
+                if (proxyEnabled == enable)
+                {
+                    if (enable && proxyServerAuthority.Contains($"127.0.0.1:{settings.ProxyPort}"))
+                    {
+                        Console.WriteLine($"Windows proxy is already enabled and set to 127.0.0.1:{settings.ProxyPort}");
+                        return true;
+                    }
+                    else if (!enable)
+                    {
+                        Console.WriteLine("Windows proxy is already disabled");
+                        return true;
+                    }
+                }
+
+                using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
+                    @"Software\Microsoft\Windows\CurrentVersion\Internet Settings", true);
+
+                if (key == null)
+                {
+                    Console.WriteLine("Cannot open registry key for proxy settings");
+                    return false;
+                }
+
+                key.SetValue("ProxyEnable", enable ? 1 : 0, Microsoft.Win32.RegistryValueKind.DWord);
+
+                if (enable)
+                {
+                    key.SetValue("ProxyServer", $"127.0.0.1:{settings.ProxyPort}", Microsoft.Win32.RegistryValueKind.String);
+                }
+
+                Console.WriteLine($"Windows proxy {(enable ? "enabled" : "disabled")} successfully");
+                if (enable)
+                {
+                    Console.WriteLine($"Proxy server set to 127.0.0.1:{settings.ProxyPort}");
+                }
+
+                RefreshInternetSettings();
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error setting Windows proxy: {ex.Message}");
+                return false;
+            }
+        }
+
+        static void RefreshInternetSettings()
+        {
+            try
+            {
+                NativeMethods.InternetSetOption(IntPtr.Zero,
+                    NativeMethods.INTERNET_OPTION_SETTINGS_CHANGED, IntPtr.Zero, 0);
+                NativeMethods.InternetSetOption(IntPtr.Zero,
+                    NativeMethods.INTERNET_OPTION_REFRESH, IntPtr.Zero, 0);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Warning: Could not refresh Internet settings: {ex.Message}");
+            }
+        }
+
+        static class NativeMethods
+        {
+            public const int INTERNET_OPTION_SETTINGS_CHANGED = 39;
+            public const int INTERNET_OPTION_REFRESH = 37;
+
+            [System.Runtime.InteropServices.DllImport("wininet.dll", SetLastError = true)]
+            public static extern bool InternetSetOption(IntPtr hInternet, int dwOption,
+                IntPtr lpBuffer, int dwBufferLength);
         }
     }
 }
