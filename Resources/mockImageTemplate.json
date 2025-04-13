@@ -1,0 +1,34 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "inlineData": {
+              "mimeType": "image/png",
+              "data": "PLACEHOLDER_IMAGE_BASE64"
+            }
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 1263,
+    "totalTokenCount": 1263,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 231
+      },
+      {
+        "modality": "IMAGE",
+        "tokenCount": 1032
+      }
+    ]
+  },
+  "modelVersion": "gemini-2.0-flash-exp-image-generation"
+}
